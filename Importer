@@ -1,0 +1,60 @@
+import os
+
+OBJ = hou.node("/obj")
+
+extensions = ["obj", "fbx", "sc"]
+
+importer_name = "Importer"
+
+for node in OBJ.children():
+    if node.name() == importer_name:
+        node.destroy()
+        
+importer = OBJ.createNode("geo", importer_name)
+
+dir = hou.ui.selectFile(title="Select a directory", file_type=hou.fileType.Directory)
+
+expanded_dir = hou.expandString(dir)
+
+obj_files = os.listdir(expanded_dir)
+
+grid = importer.createNode("grid")
+
+merge_node = importer.createNode("merge", "merge_objs")
+
+for index, obj in enumerate(obj_files):
+    elements = obj.rpartition(".")
+    extension = elements[2].lower()
+    file_name = elements[0].lower()
+    node_name = "rock" + str(index+1)
+    
+    if extension in extensions:
+        file_node = importer.createNode("file", node_name)
+        full_path = "{a}{b}.{c}".format(a=expanded_dir, b=file_name, c=extension)
+        file_node.parm("file").set(full_path)
+        att_create = file_node.createOutputNode("attribcreate::2.0")
+        att_create.parm("value1v1").set(index)
+        att_create.parm("name1").set("variant")
+        matchsize = att_create.createOutputNode("matchsize")
+        matchsize.parm("justify_x").set(0)
+        matchsize.parm("justify_y").set(1)
+        matchsize.parm("justify_z").set(0)
+        
+        merge_node.setInput(index, matchsize)
+
+scatter = grid.createOutputNode("scatter")
+scatter.parm("npts").set(index+1)
+wrangle = scatter.createOutputNode("attribwrangle")
+wrangle.parm("snippet").set("i@variant = @ptnum;")
+copytopoints = merge_node.createOutputNode("copytopoints::2.0")
+copytopoints.setNextInput(wrangle)
+copytopoints.parm("useidattrib").set(1)
+copytopoints.parm("idattrib").set("variant")
+copytopoints.parm("pack").set(1)
+unpack = copytopoints.createOutputNode("unpack")
+material = unpack.createOutputNode("material")
+null = material.createOutputNode("null", "OUT_ROCKS")
+
+importer.layoutChildren()
+null.setDisplayFlag(True)
+null.setRenderFlag(True)
