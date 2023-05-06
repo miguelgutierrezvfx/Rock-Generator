@@ -4,7 +4,7 @@ OBJ = hou.node("/obj")
 
 extensions = ["obj", "fbx", "sc"]
 
-importer_name = "Importer"
+importer_name = "Rock_Importer"
 
 for node in OBJ.children():
     if node.name() == importer_name:
